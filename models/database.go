@@ -1,9 +1,7 @@
-package utils
+package models
 
 import (
 	"fmt"
-
-	"github.com/awesomexu/go-realworld/models"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -20,9 +18,9 @@ func InitDB(){
 	DB = db
 
 	db.AutoMigrate(
-		&models.User{},
-		&models.Article{},
-		&models.Comment{},
-		&models.Tag{},
+		&User{},
+		&Article{},
+		&Comment{},
+		&Tag{},
 	)
 }

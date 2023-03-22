@@ -19,7 +19,7 @@ func Auth(c *gin.Context) {
 	}
 
 	var user models.User
-	utils.DB.First(&user, id)
+	models.DB.First(&user, id)
 	if user.ID ==0  {
 		c.AbortWithStatusJSON(401, gin.H{
 			"message": "invalid token!",

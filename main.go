@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/awesomexu/go-realworld/config"
 	"github.com/awesomexu/go-realworld/middleware"
+	"github.com/awesomexu/go-realworld/models"
 	"github.com/awesomexu/go-realworld/router"
-	"github.com/awesomexu/go-realworld/utils"
 	"github.com/awesomexu/go-realworld/validator"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -13,7 +13,7 @@ import (
 
 func main() {
 	config.InitConfig()
-	utils.InitDB()
+	models.InitDB()
 
 	r := gin.Default()
 

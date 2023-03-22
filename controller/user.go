@@ -10,9 +10,11 @@ func Register(ctx *gin.Context) {
 
 	// 1. validate request
 	var registerBody struct {
-		Email    string `json:"email" binding:"required"`
-		Username string `json:"username" binding:"required"`
-		Password string `json:"password" binding:"required"`
+		User struct {
+			Email    string `json:"email" binding:"required"`
+			Username string `json:"username" binding:"required"`
+			Password string `json:"password" binding:"required"`
+		}
 	}
 	if err := ctx.ShouldBind(&registerBody); err != nil {
 		ctx.JSON(422, gin.H{
@@ -23,8 +25,7 @@ func Register(ctx *gin.Context) {
 	}
 
 	// 2. validate email
-	var user models.User
-	utils.DB.Where("email = ?", registerBody.Email).First(&user)
+	user, _ := models.FindUserByEmail(registerBody.User.Email)
 	if user.ID != 0 {
 		ctx.JSON(400, gin.H{
 			"message": "email has been register!",
@@ -33,28 +34,27 @@ func Register(ctx *gin.Context) {
 	}
 
 	// 3. create user
-	user.Email = registerBody.Email
-	user.Username = registerBody.Username
-	user.Password = registerBody.Password
-	result := utils.DB.Create(&user)
-	if result.Error != nil {
-		panic("创建数据失败 =>" + result.Error.Error())
+	newUser, err := models.CreateUser(registerBody.User.Username, registerBody.User.Password, "", "", registerBody.User.Email)
+	if err != nil {
+		panic("创建数据失败 =>" + err.Error())
 	}
 
 	// 4. generate token
-	token, err := utils.GenToken(user.ID)
+	token, err := utils.GenToken(newUser.ID)
 	if err != nil {
 		panic("生成token失败" + err.Error())
 	}
 
 	// 5. response
 	ctx.JSON(200, gin.H{
-		"id":       user.ID,
-		"username": user.Username,
-		"email":    user.Email,
-		"bio":      user.Bio,
-		"image":    user.Image,
-		"token":    token,
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"bio":      user.Bio,
+			"image":    user.Image,
+			"token":    token,
+		},
 	})
 }
 
@@ -62,8 +62,10 @@ func Login(ctx *gin.Context) {
 
 	// 1. validate request body
 	var loginBody struct {
-		Email    string `json:"email" binding:"required"`
-		Password string `json:"password" binding:"required"`
+		User struct {
+			Email    string `json:"email" binding:"required"`
+			Password string `json:"password" binding:"required"`
+		}
 	}
 	if err := ctx.ShouldBind(&loginBody); err != nil {
 		ctx.JSON(422, gin.H{
@@ -74,11 +76,17 @@ func Login(ctx *gin.Context) {
 	}
 
 	// 2. validate Email
-	var user models.User
-	utils.DB.Find(&user, "email=?", loginBody.Email)
+	user, _ := models.FindUserByEmail(loginBody.User.Email)
 	if user.ID == 0 {
 		ctx.JSON(400, gin.H{
 			"message": "Email不存在",
+		})
+		return
+	}
+
+	if user.Password != loginBody.User.Password {
+		ctx.JSON(400, gin.H{
+			"message": "密码错误",
 		})
 		return
 	}
@@ -91,57 +99,63 @@ func Login(ctx *gin.Context) {
 
 	// 4. response
 	ctx.JSON(200, gin.H{
-		"id":       user.ID,
-		"username": user.Username,
-		"email":    user.Email,
-		"bio":      user.Bio,
-		"image":    user.Image,
-		"token":    token,
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"bio":      user.Bio,
+			"image":    user.Image,
+			"token":    token,
+		},
 	})
 }
 
 func GetCurrentUser(ctx *gin.Context) {
-	userId, _ := ctx.Get("user")
-	var user models.User
-	utils.DB.First(&user, userId)
-
+	userId, _ := ctx.Get("userId")
+	user, _ := models.FindUserByID(userId.(uint))
 	ctx.JSON(200, gin.H{
-		"id":       user.ID,
-		"username": user.Username,
-		"email":    user.Email,
-		"bio":      user.Bio,
-		"image":    user.Image,
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"bio":      user.Bio,
+			"image":    user.Image,
+		},
 	})
 }
 
 func UpdateUserInfo(ctx *gin.Context) {
 	userId, _ := ctx.Get("user")
-	var user models.User
-	utils.DB.First(&user, userId)
+	user, _ := models.FindUserByID(userId.(uint))
 
 	var updateUserBody struct {
-		Username string `json:"username"`
-		Bio      string `json:"bio"`
-		Image    string `json:"image"`
+		User struct {
+			Username string `json:"username"`
+			Bio      string `json:"bio"`
+			Image    string `json:"image"`
+		}
 	}
 	ctx.ShouldBind(&updateUserBody)
 
-	if updateUserBody.Username != "" {
-		user.Username = updateUserBody.Username
+	var updater models.User
+	if updateUserBody.User.Username != "" {
+		updater.Username = updateUserBody.User.Username
 	}
-	if updateUserBody.Bio != "" {
-		user.Bio = updateUserBody.Bio
+	if updateUserBody.User.Bio != "" {
+		updater.Bio = updateUserBody.User.Bio
 	}
-	if updateUserBody.Image != "" {
-		user.Image = updateUserBody.Image
+	if updateUserBody.User.Image != "" {
+		updater.Image = updateUserBody.User.Image
 	}
-	utils.DB.Save(&user)
+	models.UpdateUserByModel(user, updater)
 
 	ctx.JSON(200, gin.H{
-		"id":       user.ID,
-		"username": user.Username,
-		"email":    user.Email,
-		"bio":      user.Bio,
-		"image":    user.Image,
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"email":    user.Email,
+			"bio":      user.Bio,
+			"image":    user.Image,
+		},
 	})
 }
