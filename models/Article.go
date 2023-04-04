@@ -26,16 +26,17 @@ func(article * Article) GetComments() (*[]Comment, error) {
 }
 
 
-func FindArticleById(articleId uint) (*Article, error) {
+func FindArticleById(articleId string) (*Article, error) {
 	var article Article
 	r := DB.First(&article, articleId)
 	return &article, r.Error
 }
 
-func FindArticles(tag, author, favorited, offset, limit  string) (*[]Article, error) {
+func FindArticles(tag, author, favorited, offset, limit  string) (*[]Article, int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var articles []Article
+	var count int64
 	_offset,_ := strconv.Atoi(offset)
 	_limit,_ := strconv.Atoi(limit)
 	
@@ -59,7 +60,8 @@ func FindArticles(tag, author, favorited, offset, limit  string) (*[]Article, er
 	}
 
 	r := tx.Find(&articles)
-	return &articles, r.Error
+	tx.Count(&count)
+	return &articles, count, r.Error
 }
 
 func CreateArticle(userId uint, title, description, body string, tagList []string)(*Article, error) {
@@ -86,7 +88,7 @@ func UpdateArticle(article, updater *Article) error {
 	return DB.Model(&article).Updates(updater).Error
 }
 
-func DeleteArticleById(articleId uint) error {
+func DeleteArticleById(articleId string) error {
 	var article Article
 	r := DB.First(&article, articleId)
 	if r.Error != nil {

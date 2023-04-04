@@ -21,9 +21,9 @@ func CreateComment(userId, articleId uint, body string) (*Comment, error) {
 	return &comment, r.Error
 }
 
-func DeleteCommentById(commentId uint) error {
+func DeleteCommentById(commentId string) error {
 	var comment Comment
-	r := DB.First(&comment)
+	r := DB.First(&comment, commentId)
 	if r.Error != nil {
 		return r.Error
 	}

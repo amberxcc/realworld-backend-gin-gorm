@@ -14,7 +14,7 @@ func Register(ctx *gin.Context) {
 			Email    string `json:"email" binding:"required"`
 			Username string `json:"username" binding:"required"`
 			Password string `json:"password" binding:"required"`
-		}
+		} `json:"user"`
 	}
 	if err := ctx.ShouldBind(&registerBody); err != nil {
 		ctx.JSON(422, gin.H{
@@ -65,7 +65,7 @@ func Login(ctx *gin.Context) {
 		User struct {
 			Email    string `json:"email" binding:"required"`
 			Password string `json:"password" binding:"required"`
-		}
+		} `json:"user"`
 	}
 	if err := ctx.ShouldBind(&loginBody); err != nil {
 		ctx.JSON(422, gin.H{
@@ -111,8 +111,12 @@ func Login(ctx *gin.Context) {
 }
 
 func GetCurrentUser(ctx *gin.Context) {
-	userId, _ := ctx.Get("userId")
-	user, _ := models.FindUserByID(userId.(uint))
+	u, exist := ctx.Get("user")
+	if !exist {
+		panic("no auth")
+	}
+	user := u.(models.User)
+
 	ctx.JSON(200, gin.H{
 		"user": gin.H{
 			"id":       user.ID,
@@ -125,15 +129,18 @@ func GetCurrentUser(ctx *gin.Context) {
 }
 
 func UpdateUserInfo(ctx *gin.Context) {
-	userId, _ := ctx.Get("user")
-	user, _ := models.FindUserByID(userId.(uint))
+	u, exist := ctx.Get("user")
+	if !exist {
+		panic("no auth")
+	}
+	user := u.(models.User)
 
 	var updateUserBody struct {
 		User struct {
 			Username string `json:"username"`
 			Bio      string `json:"bio"`
 			Image    string `json:"image"`
-		}
+		} `json:"user"`
 	}
 	ctx.ShouldBind(&updateUserBody)
 
@@ -147,7 +154,7 @@ func UpdateUserInfo(ctx *gin.Context) {
 	if updateUserBody.User.Image != "" {
 		updater.Image = updateUserBody.User.Image
 	}
-	models.UpdateUserByModel(user, updater)
+	models.UpdateUserByModel(&user, updater)
 
 	ctx.JSON(200, gin.H{
 		"user": gin.H{

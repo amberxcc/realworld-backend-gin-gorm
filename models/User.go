@@ -40,19 +40,40 @@ func (user *User) GetFollowings() (*[]User, error) {
 	return &followers, result
 }
 
-func (user *User) GetFeedArticles(offset, limit string) (*[]Article, error) {
+func (user *User) GetFeedArticles(offset, limit string) (*[]Article, int64, error) {
 	_offset, _ := strconv.Atoi(offset)
 	_limit, _ := strconv.Atoi(limit)
 	var articles []Article
+	var count int64
 	r := DB.Model(&Article{}).
 		Joins("left join following on following.user_id=articles.user_id").
 		Where("following.follower_id=?", user.ID).
 		Limit(_limit).
 		Offset(_offset).
 		Find(&articles)
+	
+	
+	DB.Model(&Article{}).
+	Joins("left join following on following.user_id=articles.user_id").
+	Where("following.follower_id=?", user.ID).
+	Limit(_limit).
+	Offset(_offset).
+	Count(&count)
 
-	return &articles, r.Error
+	return &articles, count, r.Error
 
+}
+
+func (user *User) HasArticle (articleId string) bool {
+	var article Article
+	DB.First(&article, articleId)
+	return article.UserID == user.ID
+}
+
+func (user *User) HasComment (commentId string) bool {
+	var comment Comment
+	DB.First(&comment, commentId)
+	return comment.UserID == user.ID
 }
 
 func (user *User) Favorite(article *Article) error {
